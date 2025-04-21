@@ -9,11 +9,10 @@ import classNames from 'classnames';
 
 export const App: React.FC = () => {
   const [todos, setToDos] = useState<Todo[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState('');
-
-  // eslint-disable-next-line @typescript-eslint/no-use-before-define
-  useEffect(loadToDos, [USER_ID]);
+  const [filter, setFilter] = useState<'active' | 'all' | 'completed'>('all');
 
   function loadToDos() {
     setLoading(true);
@@ -24,6 +23,30 @@ export const App: React.FC = () => {
       .catch(() => setErrorMessage('Unable to load todos'))
       .finally(() => setLoading(false));
   }
+
+  useEffect(() => {
+    loadToDos();
+
+    if (errorMessage) {
+      const timer = setTimeout(() => {
+        setErrorMessage(''); // Clear the error message after 3 seconds
+      }, 3000);
+
+      return () => clearTimeout(timer); // Cleanup the timer if the component unmounts or errorMessage changes
+    }
+  }, [USER_ID, errorMessage]);
+
+  const filteredToDos = todos.filter(todo => {
+    if (filter === 'active') {
+      return !todo.completed;
+    }
+
+    if (filter === 'completed') {
+      return todo.completed;
+    }
+
+    return true;
+  });
 
   if (!USER_ID) {
     return <UserWarning />;
@@ -56,7 +79,7 @@ export const App: React.FC = () => {
         <section className="todoapp__main" data-cy="TodoList">
           {/* This is a completed todo */}
 
-          {todos.map(todo => (
+          {filteredToDos.map(todo => (
             <div
               key={todo.id}
               data-cy="Todo"
@@ -72,7 +95,8 @@ export const App: React.FC = () => {
               </label>
 
               <span data-cy="TodoTitle" className="todo__title">
-                {todo.completed ? 'Completed Todo' : 'Not Completed Todo'}
+                {todo.title}
+                {/*todo.completed ? 'Completed Todo' : 'Not Completed Todo'*/}
               </span>
 
               {/* Remove button appears only on hover */}
@@ -85,10 +109,10 @@ export const App: React.FC = () => {
               </button>
 
               {/* overlay will cover the todo while it is being deleted or updated */}
-              {/* <div data-cy="TodoLoader" className="modal overlay">
+              <div data-cy="TodoLoader" className="modal overlay">
                 <div className="modal-background has-background-white-ter" />
                 <div className="loader" />
-              </div> */}
+              </div>
             </div>
           ))}
 
@@ -218,31 +242,40 @@ export const App: React.FC = () => {
         {todos.length > 0 && (
           <footer className="todoapp__footer" data-cy="Footer">
             <span className="todo-count" data-cy="TodosCounter">
-              3 items left
+              {`${todos.filter(todo => todo.completed === false).length} items left`}
             </span>
 
             {/* Active link should have the 'selected' class */}
             <nav className="filter" data-cy="Filter">
               <a
                 href="#/"
-                className="filter__link selected"
+                className={classNames('filter__link', {
+                  selected: filter === 'all',
+                })}
                 data-cy="FilterLinkAll"
+                onClick={() => setFilter('all')}
               >
                 All
               </a>
 
               <a
                 href="#/active"
-                className="filter__link"
+                className={classNames('filter__link', {
+                  selected: filter === 'active',
+                })}
                 data-cy="FilterLinkActive"
+                onClick={() => setFilter('active')}
               >
                 Active
               </a>
 
               <a
                 href="#/completed"
-                className="filter__link"
+                className={classNames('filter__link', {
+                  selected: filter === 'completed',
+                })}
                 data-cy="FilterLinkCompleted"
+                onClick={() => setFilter('completed')}
               >
                 Completed
               </a>
@@ -267,10 +300,15 @@ export const App: React.FC = () => {
         className={classNames(
           'notification is-danger is-light has-text-weight-normal',
           // eslint-disable-next-line prettier/prettier
-          { 'hidden': !errorMessage},
+          { hidden: !errorMessage },
         )}
       >
-        <button data-cy="HideErrorButton" type="button" className="delete" />
+        <button
+          data-cy="HideErrorButton"
+          type="button"
+          className="delete"
+          onClick={() => setErrorMessage('')}
+        />
         {/* show only one message at a time */}
         {errorMessage}
         {/* <br />
